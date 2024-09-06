@@ -29,6 +29,10 @@
   },
   "type": "module",
   "dependencies": {
-    "@tauri-apps/api": "^1.6.0"
+    "@tauri-apps/api": "^1.6.0",
+    "md-to-quill-delta": "^1.1.1",
+    "quill": "^2.0.2",
+    "quill-delta-to-markdown": "^0.6.0",
+    "quilljs-markdown": "^1.2.0"
   }
 }
