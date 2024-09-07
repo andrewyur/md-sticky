@@ -10,7 +10,7 @@ Even though tauri apps are created with cross-platform capabilities, I am creati
 
 - [x] Create new window through window menu
 - [x] Can edit sticky note content
-- [ ] Sticky note content renders as markdown
+- [x] Sticky note content renders as markdown
 - [ ] Notes look like sticky notes
   - no window title
   - custom title bar with no minimize & full screen buttons
@@ -20,6 +20,9 @@ Even though tauri apps are created with cross-platform capabilities, I am creati
   - can create an auto organize feature
   - ctrl click to group multiple windows, manipulate position thru os
 - [ ] Notes persist after closing/reopening the app
+- [ ] button to automatically fit window to text
+- [ ] window automatically resizes with text
+- [ ] click anywhere in the window and the text focuses
 
 ## Links
 
