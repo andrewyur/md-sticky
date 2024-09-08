@@ -2,9 +2,10 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 // use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use std::fs;
 use std::sync::Mutex;
-use tauri::{AppHandle, CustomMenuItem, Manager, Menu, MenuItem, Submenu};
+use tauri::{generate_context, AppHandle, CustomMenuItem, Manager, Menu, MenuItem, Submenu};
 
 fn main() {
     // here `"quit".to_string()` defines the menu item id, and the second parameter is the menu item label.
@@ -35,15 +36,27 @@ fn main() {
                 fs::create_dir(app_data_path).unwrap();
             }
 
+            let notes = read_contents(app.app_handle()).unwrap();
+
+            notes.into_iter().for_each(|note| {
+                let window = create_new_sticky(app.handle());
+                let window_clone = window.clone();
+                window.once("ready", move |_event| {
+                    window_clone.emit("init", note).unwrap();
+                });
+            });
+
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![add_color, get_colors])
+        .invoke_handler(tauri::generate_handler![
+            add_color,
+            get_colors,
+            save_contents
+        ])
         .manage(Mutex::new(0 as u32))
         .menu(menu)
         .on_menu_event(|event| match event.menu_item_id() {
-            "quit" => {
-                std::process::exit(0);
-            }
+            "quit" => std::process::exit(0),
             "new_note" => {
                 std::thread::spawn(move || {
                     create_new_sticky(event.window().app_handle());
@@ -64,39 +77,25 @@ fn main() {
             }
             _ => {}
         })
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .run(generate_context!())
+        .expect("error while building tauri application")
 }
 
-fn create_new_sticky(handle: AppHandle) {
+fn create_new_sticky(handle: AppHandle) -> tauri::Window {
     let binding = handle.state::<Mutex<u32>>();
     let mut window_count = binding.lock().unwrap();
     *window_count += 1;
-    let _local_window = tauri::WindowBuilder::new(
+    tauri::WindowBuilder::new(
         &handle,
         format!("new_sticky_window_{}", window_count),
         tauri::WindowUrl::App("index.html".into()),
     )
     .decorations(false)
     .resizable(true)
-    .inner_size(400.0, 400.0)
+    .inner_size(300.0, 250.0)
     .build()
-    .expect("Failed to create window");
+    .expect("Failed to create window")
 }
-
-// - Yellow:
-// - White:
-// - Light Orange:
-// - Olive:
-// - Green:
-// - Pastel Blue:
-// - Aqua:
-// - Blue:
-// - Orange:
-// - Pink:
-// - Red:
-// - Purple:
-// default is yellow
 
 const DEFAULT_COLORS: [&str; 8] = [
     "#fff9b1", "#10e17a", "#a6ccf5", "#67c6c0", "#ff9d48", "#b384bb", "#ff6f61", "#d32f2f",
@@ -112,23 +111,8 @@ fn add_color(color: &str, app_handle: tauri::AppHandle) -> Result<(), String> {
 
     let file_path = path_buf.as_path();
 
-    let file_content = if file_path.exists() {
-        fs::read_to_string(file_path).map_err(|e| e.to_string())?
-    } else {
-        fs::File::create(file_path).unwrap();
-        String::new()
-    };
+    let mut colors = get_colors(app_handle).map_err(|e| e.to_string())?;
 
-    let mut colors = if file_content.len() > 0 {
-        serde_json::from_str(&file_content).map_err(|e| e.to_string())?
-    } else {
-        DEFAULT_COLORS
-            .iter()
-            .map(|s| s.to_string())
-            .collect::<Vec<String>>()
-    };
-
-    // Check if color already exists
     if !colors.iter().any(|c| *c == color) {
         colors.push(color.to_string());
         fs::write(
@@ -160,4 +144,88 @@ fn get_colors(app_handle: tauri::AppHandle) -> Result<Vec<String>, String> {
             .map(|s| s.to_string())
             .collect::<Vec<String>>())
     }
+}
+
+#[derive(Clone, Deserialize, Serialize)]
+struct Note {
+    color: String,
+    contents: String,
+    label: String,
+    x: u32,
+    y: u32,
+    height: u32,
+    width: u32,
+}
+
+#[tauri::command]
+fn read_contents(app_handle: tauri::AppHandle) -> Result<Vec<Note>, String> {
+    let path_buf = app_handle
+        .path_resolver()
+        .app_data_dir()
+        .unwrap()
+        .join("notes.json");
+
+    let file_path = path_buf.as_path();
+
+    println!("{}", path_buf.to_str().unwrap());
+
+    let file_content = if file_path.exists() {
+        fs::read_to_string(file_path).map_err(|e| e.to_string())?
+    } else {
+        fs::File::create(file_path).unwrap();
+        String::new()
+    };
+
+    let notes: Vec<Note> = if file_content.len() > 0 {
+        serde_json::from_str(&file_content).map_err(|e| e.to_string())?
+    } else {
+        Vec::new()
+    };
+
+    Ok(notes)
+}
+
+#[tauri::command]
+fn save_contents(
+    color: String,
+    contents: String,
+    label: String,
+    x: u32,
+    y: u32,
+    height: u32,
+    width: u32,
+    app_handle: tauri::AppHandle,
+) -> Result<(), String> {
+    let path_buf = app_handle
+        .path_resolver()
+        .app_data_dir()
+        .unwrap()
+        .join("notes.json");
+
+    let file_path = path_buf.as_path();
+
+    let mut notes = read_contents(app_handle).map_err(|e| e.to_string())?;
+
+    notes = notes
+        .into_iter()
+        .filter(|note| note.label != label && note.label != "main")
+        .collect::<Vec<Note>>();
+
+    notes.push(Note {
+        label,
+        contents,
+        color,
+        x,
+        y,
+        height,
+        width,
+    });
+
+    fs::write(
+        file_path,
+        serde_json::to_string(&notes).map_err(|e| e.to_string())?,
+    )
+    .map_err(|e| e.to_string())?;
+
+    Ok(())
 }
