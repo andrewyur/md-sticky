@@ -1,0 +1,72 @@
+body {
+  margin: 0;
+  flex-direction: column;
+}
+
+#editor {
+  height: 100%;
+  padding-top: 20px;
+  min-height: 100vh;
+}
+
+#titlebar {
+  height: 20px;
+  user-select: none;
+  display: flex;
+  justify-content: space-between;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1;
+  opacity: 0.1;
+  transition: all cubic-bezier(0.165, 0.84, 0.44, 1) 0.25s;
+}
+
+.hover,
+#titlebar:hover {
+  opacity: 1 !important;
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.titlebar-button {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: row-reverse;
+  min-width: 20px;
+  height: 20px;
+}
+
+img {
+  height: 10px;
+  padding: 5px;
+}
+
+.titlebar-button:hover {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.colorBox {
+  width: 20px;
+  height: 20px;
+}
+
+input {
+  border: 0;
+  margin: 0;
+  height: 20px;
+  width: 90px;
+  padding-left: 5px;
+  background-color: rgba(0, 0, 0, 0);
+  color: #000;
+  opacity: 1;
+}
+
+::placeholder {
+  color: rgba(0, 0, 0, 0.5);
+}
+
+input:focus {
+  outline: none;
+}
