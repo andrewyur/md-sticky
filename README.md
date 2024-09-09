@@ -29,6 +29,7 @@ Even though tauri apps are created with cross-platform capabilities, I am creati
   - drag to select multiple is probably not possible
   - can create an auto organize feature
   - ctrl click to group multiple windows, manipulate position thru os
+- [ ] cmd+arrows to snap to guidelines
 - [ ] accelerator to automatically fit window to highest heading level
 - [ ] window height automatically resizes with text
 - [ ] item tray icon
@@ -39,3 +40,5 @@ Even though tauri apps are created with cross-platform capabilities, I am creati
 - [ ] better default colors
 - [ ] increase autosave frequency
 - [ ] increase autosave consistency
+- [ ] drag and then mouse exiting cursor freezes the task bar
+- [ ] fix spacing for headings when nothing is above them
