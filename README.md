@@ -37,3 +37,5 @@ Even though tauri apps are created with cross-platform capabilities, I am creati
 - [ ] shrink down text size
 - [ ] copy paste
 - [ ] better default colors
+- [ ] increase autosave frequency
+- [ ] increase autosave consistency
