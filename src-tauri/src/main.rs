@@ -3,8 +3,11 @@
 
 // use serde::{Deserialize, Serialize};
 use serde::{Deserialize, Serialize};
-use std::fs;
+use std::sync::mpsc::Sender;
 use std::sync::Mutex;
+use std::thread;
+use std::time::Duration;
+use std::{fs, sync::mpsc};
 use tauri::{generate_context, AppHandle, CustomMenuItem, Manager, Menu, MenuItem, Submenu};
 
 fn main() {
@@ -28,7 +31,7 @@ fn main() {
 
     tauri::Builder::default()
         .setup(|app| {
-            let path_buf = app.app_handle().path_resolver().app_data_dir().unwrap();
+            let path_buf = app.handle().path_resolver().app_data_dir().unwrap();
 
             let app_data_path = path_buf.as_path();
 
@@ -36,7 +39,7 @@ fn main() {
                 fs::create_dir(app_data_path).unwrap();
             }
 
-            let notes = read_contents(app.app_handle()).unwrap();
+            let notes = read_contents(app.handle()).unwrap();
 
             notes.into_iter().for_each(|note| {
                 let window = create_new_sticky(app.handle());
@@ -46,13 +49,15 @@ fn main() {
                 });
             });
 
+            let handle_clone = app.handle().clone();
+            thread::spawn(move || loop {
+                thread::sleep(Duration::from_secs(1));
+                save_notes(&handle_clone)
+            });
+
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![
-            add_color,
-            get_colors,
-            save_contents
-        ])
+        .invoke_handler(tauri::generate_handler![add_color, get_colors])
         .manage(Mutex::new(0 as u32))
         .menu(menu)
         .on_menu_event(|event| match event.menu_item_id() {
@@ -150,11 +155,11 @@ fn get_colors(app_handle: tauri::AppHandle) -> Result<Vec<String>, String> {
 struct Note {
     color: String,
     contents: String,
-    label: String,
     x: u32,
     y: u32,
     height: u32,
     width: u32,
+    label: String,
 }
 
 #[tauri::command]
@@ -166,8 +171,6 @@ fn read_contents(app_handle: tauri::AppHandle) -> Result<Vec<Note>, String> {
         .join("notes.json");
 
     let file_path = path_buf.as_path();
-
-    println!("{}", path_buf.to_str().unwrap());
 
     let file_content = if file_path.exists() {
         fs::read_to_string(file_path).map_err(|e| e.to_string())?
@@ -185,17 +188,7 @@ fn read_contents(app_handle: tauri::AppHandle) -> Result<Vec<Note>, String> {
     Ok(notes)
 }
 
-#[tauri::command]
-fn save_contents(
-    color: String,
-    contents: String,
-    label: String,
-    x: u32,
-    y: u32,
-    height: u32,
-    width: u32,
-    app_handle: tauri::AppHandle,
-) -> Result<(), String> {
+fn save_contents(mut notes: Vec<Note>, app_handle: &tauri::AppHandle) -> Result<(), String> {
     let path_buf = app_handle
         .path_resolver()
         .app_data_dir()
@@ -204,22 +197,7 @@ fn save_contents(
 
     let file_path = path_buf.as_path();
 
-    let mut notes = read_contents(app_handle).map_err(|e| e.to_string())?;
-
-    notes = notes
-        .into_iter()
-        .filter(|note| note.label != label && note.label != "main")
-        .collect::<Vec<Note>>();
-
-    notes.push(Note {
-        label,
-        contents,
-        color,
-        x,
-        y,
-        height,
-        width,
-    });
+    notes = notes.into_iter().filter(|n| n.label != "main").collect();
 
     fs::write(
         file_path,
@@ -228,4 +206,30 @@ fn save_contents(
     .map_err(|e| e.to_string())?;
 
     Ok(())
+}
+
+// so many unwraps... this is bad code...
+fn save_notes(app_handle: &tauri::AppHandle) {
+    let mut contents: Vec<Note> = Vec::new();
+
+    let (tx, rx) = mpsc::channel();
+
+    app_handle.windows().iter().for_each(|(_, window)| {
+        if window.label() != "main" {
+            window.emit("save-contents-request", {}).unwrap();
+
+            let sender: Sender<Note> = tx.clone();
+            window.once("save-contents-response", move |event| {
+                sender
+                    .send(serde_json::from_str(&event.payload().unwrap()).unwrap())
+                    .unwrap();
+            });
+        }
+    });
+
+    for _ in 0..(app_handle.windows().len() - 1) {
+        contents.push(rx.recv().unwrap());
+    }
+
+    save_contents(contents, app_handle).unwrap();
 }

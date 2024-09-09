@@ -9,7 +9,6 @@
     const { appWindow, PhysicalPosition, PhysicalSize } = await import(
       "@tauri-apps/api/window"
     );
-    const { invoke } = await import("@tauri-apps/api/tauri");
 
     const quill = new Quill("#editor", {
       theme: "bubble",
@@ -32,28 +31,13 @@
       y: number;
       height: number;
       width: number;
+      label: string;
     };
 
-    appWindow.listen("init", (event) => {
-      const payload = event.payload as InitPayload;
-
-      console.log("payload", payload);
-
-      console.log(JSON.parse(payload.contents));
-
-      quill.setContents(JSON.parse(payload.contents));
-      document.body.style.backgroundColor = payload.color;
-
-      appWindow.setPosition(new PhysicalPosition(payload.x, payload.y));
-
-      appWindow.setSize(new PhysicalSize(payload.width, payload.height));
-    });
-
-    const saveContents = async () => {
-      // console.log(appWindow.label);
+    appWindow.listen("save-contents-request", async () => {
       const pos = await appWindow.outerPosition();
       const size = await appWindow.innerSize();
-      invoke("save_contents", {
+      appWindow.emit("save-contents-response", {
         contents: JSON.stringify(quill.getContents()),
         label: appWindow.label,
         color: document.body.style.backgroundColor,
@@ -62,20 +46,17 @@
         width: size.width,
         height: size.height,
       });
-    };
+    });
 
-    let saveInterval: number | null = null;
+    appWindow.listen("init", (event) => {
+      const payload = event.payload as InitPayload;
 
-    appWindow.onFocusChanged(({ payload: focused }) => {
-      console.log("focus: ", appWindow.label, focused);
-      if (focused) {
-        saveInterval = setInterval(saveContents, 1000);
-      } else {
-        saveContents();
-        if (saveInterval) {
-          clearInterval(saveInterval);
-        }
-      }
+      quill.setContents(JSON.parse(payload.contents));
+      document.body.style.backgroundColor = payload.color;
+
+      appWindow.setPosition(new PhysicalPosition(payload.x, payload.y));
+
+      appWindow.setSize(new PhysicalSize(payload.width, payload.height));
     });
 
     appWindow.emit("ready", {});
