@@ -42,3 +42,4 @@ Even though tauri apps are created with cross-platform capabilities, I am creati
 - [ ] increase autosave consistency
 - [ ] drag and then mouse exiting cursor freezes the task bar
 - [ ] fix spacing for headings when nothing is above them
+- [ ] hide white sticky when loading
