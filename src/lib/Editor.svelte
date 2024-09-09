@@ -59,6 +59,10 @@
       appWindow.setSize(new PhysicalSize(payload.width, payload.height));
     });
 
+    if (appWindow.label != "main") appWindow.show();
+
+    console.log(appWindow.label);
+
     appWindow.emit("ready", {});
   });
 </script>

@@ -19,7 +19,10 @@
 
     document
       .getElementById("titlebar-close")
-      ?.addEventListener("click", () => appWindow.close());
+      ?.addEventListener("click", async () => {
+        await invoke("remove_window", { label: appWindow.label });
+        appWindow.close();
+      });
 
     let colorMenuOpen = false;
     let colorPickerOpen = false;
