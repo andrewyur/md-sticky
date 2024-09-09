@@ -17,18 +17,19 @@ Even though tauri apps are created with cross-platform capabilities, I am creati
   - custom title bar with no minimize & full screen buttons
   - shaped like a sticky note
 - [x] select color ~~through options bar~~
-- [ ] Can move groups of sticky notes easily
-  - drag to select multiple is probably not possible
-  - can create an auto organize feature
-  - ctrl click to group multiple windows, manipulate position thru os
-- [ ] Notes persist after closing/reopening the app
+- [x] Notes persist after closing/reopening the app
   - [x] positions are stored
   - [x] note contents are stored
   - [x] colors are stored
   - [x] sizes are stored
-  - [ ] consistent
+  - [x] consistent
     - need to do a whole application snapshot instead of per note, saves can conflict
-- [ ] button to automatically fit window to text
-- [ ] window automatically resizes with text
 - [x] click anywhere in the window and the text focuses
+- [ ] Can move groups of sticky notes easily
+  - drag to select multiple is probably not possible
+  - can create an auto organize feature
+  - ctrl click to group multiple windows, manipulate position thru os
+- [ ] accelerator to automatically fit window to text
+- [ ] window height automatically resizes with text
 - [ ] item tray icon
+  - the one i have now is funny but will get annoying

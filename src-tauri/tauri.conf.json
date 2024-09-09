@@ -42,7 +42,7 @@
         "icons/icon.icns",
         "icons/icon.ico"
       ],
-      "identifier": "com.tauri.dev",
+      "identifier": "md-sicky",
       "longDescription": "",
       "macOS": {
         "entitlements": null,
