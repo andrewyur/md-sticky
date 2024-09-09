@@ -33,3 +33,4 @@ Even though tauri apps are created with cross-platform capabilities, I am creati
 - [ ] window height automatically resizes with text
 - [ ] item tray icon
   - the one i have now is funny but will get annoying
+- [ ] accelerator to close currently open sticky
