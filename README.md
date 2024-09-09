@@ -29,7 +29,7 @@ Even though tauri apps are created with cross-platform capabilities, I am creati
   - drag to select multiple is probably not possible
   - can create an auto organize feature
   - ctrl click to group multiple windows, manipulate position thru os
-- [ ] accelerator to automatically fit window to text
+- [ ] accelerator to automatically fit window to highest heading level
 - [ ] window height automatically resizes with text
 - [ ] item tray icon
   - the one i have now is funny but will get annoying
