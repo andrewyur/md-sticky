@@ -3,12 +3,13 @@
 
 // use serde::{Deserialize, Serialize};
 use serde::{Deserialize, Serialize};
-use std::sync::mpsc::Sender;
-use std::sync::Mutex;
+use std::collections::HashSet;
+use std::fs;
+use std::sync::mpsc;
+use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
-use std::{fs, sync::mpsc};
-use tauri::{generate_context, AppHandle, CustomMenuItem, Manager, Menu, MenuItem, Submenu};
+use tauri::{generate_context, AppHandle, CustomMenuItem, Manager, Menu, Submenu};
 
 fn main() {
     // here `"quit".to_string()` defines the menu item id, and the second parameter is the menu item label.
@@ -27,10 +28,23 @@ fn main() {
             .add_item(quit),
     );
 
+    let copy = CustomMenuItem::new("edit_copy", "Copy").accelerator("CmdOrCtrl+C");
+    let paste = CustomMenuItem::new("edit_paste", "Paste").accelerator("CmdOrCtrl+V");
+    let cut = CustomMenuItem::new("edit_cut", "Cut").accelerator("CmdOrCtrl+X");
+    let select_all =
+        CustomMenuItem::new("edit_select_all", "Select All").accelerator("CmdOrCtrl+A");
+    let edit_submenu = Submenu::new(
+        "Edit",
+        Menu::new()
+            .add_item(copy)
+            .add_item(paste)
+            .add_item(cut)
+            .add_item(select_all),
+    );
+
     let menu = Menu::new()
-        .add_native_item(MenuItem::Copy)
-        .add_item(CustomMenuItem::new("hide", "Hide"))
-        .add_submenu(file_submenu);
+        .add_submenu(file_submenu)
+        .add_submenu(edit_submenu);
 
     tauri::Builder::default()
         .setup(|app| {
@@ -59,10 +73,19 @@ fn main() {
             });
 
             let handle_clone = app.handle().clone();
+            let mut save_fail_ct = 0;
             thread::spawn(move || loop {
                 thread::sleep(Duration::from_millis(500));
-                println!("{}", "Calling save notes!");
-                save_notes(&handle_clone)
+                println!("Calling save notes!");
+                if let Err(e) = save_notes(&handle_clone) {
+                    println!("Error saving notes: {e:#?}");
+                    save_fail_ct += 1;
+                } else {
+                    save_fail_ct = 0;
+                }
+                if save_fail_ct > 2 {
+                    handle_clone.restart();
+                }
             });
 
             Ok(())
@@ -104,6 +127,13 @@ fn main() {
 
                 fs::remove_file(file_path).expect("Could not remove colors save file");
             }
+            m if m.starts_with("edit_") => {
+                if let Some(focused_window) = event.window().get_focused_window() {
+                    focused_window
+                        .emit(m.strip_prefix("edit_").unwrap(), {})
+                        .expect("could not send copy event");
+                }
+            }
             _ => {}
         })
         .run(generate_context!())
@@ -126,7 +156,7 @@ fn create_new_sticky(handle: AppHandle) -> tauri::Window {
     )
     .decorations(false)
     .resizable(true)
-    // .visible(false)
+    .visible(false)
     .inner_size(300.0, 250.0)
     .build()
     .expect("Failed to create window");
@@ -258,7 +288,7 @@ fn save_contents(mut notes: Vec<Note>, app_handle: &tauri::AppHandle) -> Result<
 }
 
 // so many unwraps... this is bad code...
-fn save_notes(app_handle: &tauri::AppHandle) {
+fn save_notes(app_handle: &tauri::AppHandle) -> Result<(), String> {
     let mut contents: Vec<Note> = Vec::new();
 
     let (tx, rx) = mpsc::channel();
@@ -269,39 +299,59 @@ fn save_notes(app_handle: &tauri::AppHandle) {
         .lock()
         .expect("could not obtain lock for windows ready mutex");
 
+    let responded_windows = Arc::new(Mutex::new(HashSet::new()));
+
     windows_ready.iter().for_each(|window_label| {
         let window = app_handle
             .get_window(window_label)
             .expect("could get the current window from window label");
 
+        let sender = tx.clone();
+        let window_clone = window.clone();
+        let window_label_clone = window_label.clone();
+        let responded_windows_clone = Arc::clone(&responded_windows);
+
+        window.listen("save-contents-response", move |event| {
+            // sometimes this event gets called multiple times, not sure why...
+            window_clone.unlisten(event.id());
+
+            let mut binding = responded_windows_clone
+                .lock()
+                .expect("could not obtain lock on responded windows mutex");
+
+            if binding.contains(&window_label_clone) {
+                return; // Skip if this window has already responded
+            }
+
+            binding.insert(window_label_clone.clone());
+            if let Err(e) = sender.send(
+                serde_json::from_str(
+                    &event
+                        .payload()
+                        .expect("could not extract payload from event"),
+                )
+                .expect("Could not decode save-contents-response payload"),
+            ) {
+                println!("could not send note contents to main thread, {e:x?}")
+            }
+        });
+
         window
             .emit("save-contents-request", {})
             .expect("could not emit save-contents-request to the window");
-
-        let sender: Sender<Note> = tx.clone();
-        window.once("save-contents-response", move |event| {
-            sender
-                .send(
-                    serde_json::from_str(
-                        &event
-                            .payload()
-                            .expect("could not extract payload from event"),
-                    )
-                    .expect("Could not decode save-contents-response payload"),
-                )
-                .expect("could not send notes contents to main thread");
-        });
     });
 
     for i in 0..windows_ready.len() {
         contents.push(
-            rx.recv()
-                .expect("could not recieve response contents from reciever"),
+            rx.recv_timeout(Duration::from_millis(100))
+                .map_err(|_| String::from("Timeout failed"))?,
         );
         println!("Recieving save {} of {}", i + 1, windows_ready.len());
     }
 
     save_contents(contents, app_handle).expect("could not save contents");
+
+    Ok(())
 }
 
 #[tauri::command]

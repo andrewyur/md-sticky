@@ -5,14 +5,26 @@
   import "quilljs-markdown/dist/quilljs-markdown-common-style.css";
 
   onMount(async () => {
-    const { default: Quill } = await import("quill");
+    const { default: Quill, Range } = await import("quill");
+    const { Delta } = await import("quill/core");
+
     const { appWindow, PhysicalPosition, PhysicalSize } = await import(
       "@tauri-apps/api/window"
     );
+    const { writeText, readText } = await import("@tauri-apps/api/clipboard");
 
     const quill = new Quill("#editor", {
       theme: "bubble",
       placeholder: "Empty Note",
+    });
+
+    quill.clipboard.addMatcher(Node.ELEMENT_NODE, function (node, delta) {
+      var plaintext = node.textContent;
+      if (plaintext) {
+        return new Delta().insert(plaintext);
+      } else {
+        return new Delta();
+      }
     });
 
     const markdownOptions = {};
@@ -33,6 +45,43 @@
       width: number;
       label: string;
     };
+
+    appWindow.listen("copy", () => {
+      const selection = quill.getSelection();
+
+      if (selection) {
+        writeText(quill.getText(selection));
+      }
+    });
+
+    appWindow.listen("cut", async () => {
+      const selection = quill.getSelection();
+
+      const text = await readText();
+
+      if (selection && text) {
+        writeText(quill.getText(selection));
+        quill.deleteText(selection);
+      }
+    });
+
+    appWindow.listen("paste", async () => {
+      const selection = quill.getSelection();
+
+      const text = await readText();
+
+      if (selection && text) {
+        quill.deleteText(selection);
+        quill.insertText(selection.index, text);
+      }
+    });
+
+    appWindow.listen("select_all", () => {
+      setTimeout(
+        () => quill.setSelection(new Range(0, quill.getText().length)),
+        0
+      );
+    });
 
     appWindow.listen("save-contents-request", async () => {
       const pos = await appWindow.outerPosition();
@@ -61,7 +110,10 @@
 
     if (appWindow.label != "main") appWindow.show();
 
-    console.log(appWindow.label);
+    // not sure why, but this glitches out the cursor in the editor
+    setTimeout(() => {
+      quill.focus();
+    }, 100);
 
     appWindow.emit("ready", {});
   });

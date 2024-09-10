@@ -25,6 +25,12 @@ Even though tauri apps are created with cross-platform capabilities, I am creati
   - [x] consistent
     - need to do a whole application snapshot instead of per note, saves can conflict
 - [x] click anywhere in the window and the text focuses
+- [x] accelerator to close currently open sticky
+- [x] increase autosave frequency
+- [x] hide white sticky when loading
+- [x] shrink down text size
+- [x] fix spacing for headings when nothing is above them
+- [x] copy paste
 - [ ] Can move groups of sticky notes easily
   - drag to select multiple is probably not possible
   - can create an auto organize feature
@@ -34,13 +40,9 @@ Even though tauri apps are created with cross-platform capabilities, I am creati
 - [ ] window height automatically resizes with text
 - [ ] item tray icon
   - the one i have now is funny but will get annoying
-- [x] accelerator to close currently open sticky
-- [ ] shrink down text size
-- [ ] copy paste
 - [ ] better default colors
-- [x] increase autosave frequency
-- [x] increase autosave consistency
-- [ ] drag and then mouse exiting cursor freezes the task bar
-- [ ] fix spacing for headings when nothing is above them
-- [ ] hide white sticky when loading
 - [ ] stickies stick to the edges of other windows
+- [x] drag and then mouse exiting cursor freezes the task bar
+  - fixed as well as possible without changing the menu concept, the cursor change to the resize icons fools the mouseout event, there is not much i can do about this
+- [ ] increase autosave consistency
+  - autosave still freezes sometimes...

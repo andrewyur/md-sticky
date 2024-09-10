@@ -26,6 +26,7 @@
 
     let colorMenuOpen = false;
     let colorPickerOpen = false;
+    let hoverStay = false;
 
     async function openColorMenu() {
       const target = document.getElementById(
@@ -33,6 +34,7 @@
       ) as HTMLDivElement;
 
       document.getElementById("titlebar")!.classList.add("hover");
+      hoverStay = true;
 
       let colors = await fetchColors();
 
@@ -88,6 +90,7 @@
         colorPickerOpen = true;
 
         document.getElementById("titlebar")!.classList.add("hover");
+        hoverStay = true;
 
         const textbox = document.createElement("input");
         textbox.id = "color-picker";
@@ -109,6 +112,7 @@
       ) as HTMLDivElement;
 
       document.getElementById("titlebar")!.classList.remove("hover");
+      hoverStay = false;
 
       const icon = document.getElementById("titlebar-color-icon");
       target.innerHTML = "";
@@ -132,6 +136,7 @@
 
       if (hexRegex.test(target.value) || target.value.length == 0) {
         document.getElementById("titlebar")!.classList.remove("hover");
+        hoverStay = false;
 
         const icon = document.getElementById("titlebar-color-icon");
         const button = document.getElementById("titlebar-color");
@@ -154,6 +159,18 @@
           openColorMenu();
         }
       });
+
+    document.getElementById("titlebar")?.addEventListener("mouseover", (e) => {
+      document.getElementById("titlebar")?.classList.add("hover");
+    });
+    document.getElementById("titlebar")?.addEventListener("mouseout", () => {
+      if (!hoverStay)
+        document.getElementById("titlebar")?.classList.remove("hover");
+    });
+    appWindow.listen("tauri://blur", (event) => {
+      if (!hoverStay)
+        document.getElementById("titlebar")?.classList.remove("hover");
+    });
   });
 </script>
 

@@ -5,7 +5,7 @@ body {
 
 #editor {
   height: 100%;
-  padding-top: 15px;
+  padding-top: 22px;
   min-height: 100vh;
 }
 
@@ -22,9 +22,9 @@ body {
   opacity: 0.1;
   transition: all cubic-bezier(0.165, 0.84, 0.44, 1) 0.25s;
 }
+/* #titlebar:hover */
 
-.hover,
-#titlebar:hover {
+.hover {
   opacity: 1 !important;
   background: rgba(0, 0, 0, 0.1);
 }
@@ -83,4 +83,12 @@ input:focus {
   top: -1.5px;
   color: #000;
   margin-left: -1.75em;
+}
+
+.ql-editor {
+  padding-top: 0;
+}
+
+.ql-container {
+  font-size: 12px;
 }
