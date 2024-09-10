@@ -41,7 +41,8 @@ Even though tauri apps are created with cross-platform capabilities, I am creati
 - [ ] item tray icon
   - the one i have now is funny but will get annoying
 - [ ] better default colors
-- [ ] stickies stick to the edges of other windows
+- [x] stickies stick to the edges of other windows
+  - this is an issue with macos not the app
 - [x] drag and then mouse exiting cursor freezes the task bar
   - fixed as well as possible without changing the menu concept, the cursor change to the resize icons fools the mouseout event, there is not much i can do about this
 - [ ] increase autosave consistency
