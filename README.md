@@ -46,4 +46,8 @@ Even though tauri apps are created with cross-platform capabilities, I am creati
 - [x] drag and then mouse exiting cursor freezes the task bar
   - fixed as well as possible without changing the menu concept, the cursor change to the resize icons fools the mouseout event, there is not much i can do about this
 - [ ] increase autosave consistency
-  - autosave still freezes sometimes...
+  - autosave still freezes sometimes... 
+- [ ] notes can sometimes disappear
+  - could be a problem with the autosave or with the init process
+  - noticed only after switching back to it
+  - could have also accidentally hit the accelerator
