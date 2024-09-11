@@ -22,3 +22,4 @@ download the .dmg and run `xattr -d com.apple.quarantine /path/to/dmg.dmg` to al
 
 - [ ] keyboard shortuts to set colors
 - [ ] cycle through stickies by height
+- [ ] snap issues with overlap (down and right)
