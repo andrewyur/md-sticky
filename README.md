@@ -21,3 +21,4 @@ download the .dmg and run `xattr -d com.apple.quarantine /path/to/dmg.dmg` to al
 ## TODO
 
 - [ ] keyboard shortuts to set colors
+- [ ] cycle through stickies by height
