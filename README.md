@@ -48,3 +48,7 @@ Even though tauri apps are created with cross-platform capabilities, I am creati
   - the one i have now is funny but will get annoying
 - [ ] better default colors
 - [ ] accelerator to iterate through notes
+- [ ] notes can sometimes disappear
+  - could be a problem with the autosave or with the init process
+  - noticed only after switching back to it
+  - could have also accidentally hit the accelerator
