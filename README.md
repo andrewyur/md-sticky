@@ -53,3 +53,4 @@ Even though tauri apps are created with cross-platform capabilities, I am creati
   - could be a problem with the autosave or with the init process
   - noticed only after switching back to it
   - could have also accidentally hit the accelerator
+- [x] consistent ordering for windows when iterating through them

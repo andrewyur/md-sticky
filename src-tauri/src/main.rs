@@ -122,9 +122,7 @@ fn main() {
             let mut save_fail_ct = 0;
             thread::spawn(move || loop {
                 thread::sleep(Duration::from_millis(500));
-                println!("Calling save notes!");
-                if let Err(e) = save_notes(&handle_clone) {
-                    println!("Error saving notes: {e:#?}");
+                if let Err(_) = save_notes(&handle_clone) {
                     save_fail_ct += 1;
                 } else {
                     save_fail_ct = 0;
@@ -187,8 +185,17 @@ fn main() {
             }
             NEXT_WINDOW => {
                 if let Some(focused_window) = event.window().get_focused_window() {
+                    let mut collect = event
+                        .window()
+                        .app_handle()
+                        .windows()
+                        .into_iter()
+                        .collect::<Vec<(String, Window)>>();
+
+                    collect.sort_by(|a, b| a.0.cmp(&b.0));
+
                     let mut next = false;
-                    for (label, window) in event.window().app_handle().windows().iter().cycle() {
+                    for (label, window) in collect.iter().cycle() {
                         if next && label != MAIN {
                             window.set_focus().expect("Could not set focused");
                             break;
@@ -202,7 +209,16 @@ fn main() {
             PREV_WINDOW => {
                 if let Some(focused_window) = event.window().get_focused_window() {
                     let mut prev_window: Option<Window> = None;
-                    for (label, window) in event.window().app_handle().windows().iter().cycle() {
+
+                    let mut collect = event
+                        .window()
+                        .app_handle()
+                        .windows()
+                        .into_iter()
+                        .collect::<Vec<(String, Window)>>();
+
+                    collect.sort_by(|a, b| a.0.cmp(&b.0));
+                    for (label, window) in collect.iter().cycle() {
                         if window.label() == focused_window.label() && prev_window.is_some() {
                             prev_window
                                 .unwrap()
@@ -504,12 +520,6 @@ fn save_contents(mut notes: Vec<Note>, app_handle: &tauri::AppHandle) -> Result<
 
     notes = notes.into_iter().filter(|n| n.label != "main").collect();
 
-    println!(
-        "Saving! Current notes: {}, Current time: {:#?}",
-        notes.len(),
-        std::time::SystemTime::now()
-    );
-
     fs::write(
         file_path,
         serde_json::to_string(&notes).map_err(|e| e.to_string())?,
@@ -556,16 +566,14 @@ fn save_notes(app_handle: &tauri::AppHandle) -> Result<(), String> {
             }
 
             binding.insert(window_label_clone.clone());
-            if let Err(e) = sender.send(
+            if let Err(_) = sender.send(
                 serde_json::from_str(
                     &event
                         .payload()
                         .expect("could not extract payload from event"),
                 )
                 .expect("Could not decode save-contents-response payload"),
-            ) {
-                println!("could not send note contents to main thread, {e:x?}")
-            }
+            ) {}
         });
 
         window
@@ -573,12 +581,11 @@ fn save_notes(app_handle: &tauri::AppHandle) -> Result<(), String> {
             .expect("could not emit save-contents-request to the window");
     });
 
-    for i in 0..windows_ready.len() {
+    for _ in 0..windows_ready.len() {
         contents.push(
             rx.recv_timeout(Duration::from_millis(100))
                 .map_err(|_| String::from("Timeout failed"))?,
         );
-        println!("Recieving save {} of {}", i + 1, windows_ready.len());
     }
 
     save_contents(contents, app_handle).expect("could not save contents");
