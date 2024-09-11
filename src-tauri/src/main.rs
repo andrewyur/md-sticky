@@ -23,6 +23,8 @@ const SNAP_UP: &str = "snap_up";
 const SNAP_DOWN: &str = "snap_down";
 const SNAP_LEFT: &str = "snap_left";
 const SNAP_RIGHT: &str = "snap_right";
+const NEXT_WINDOW: &str = "next_window";
+const FIT_TEXT: &str = "fit_text";
 
 const CUT: &str = "copy";
 const COPY: &str = "cut";
@@ -48,19 +50,22 @@ fn main() {
     );
 
     let snap_up = CustomMenuItem::new(SNAP_UP, "Snap Up").accelerator("CmdOrCtrl+Alt+Up");
-    let snap_down =
-        CustomMenuItem::new(SNAP_DOWN.to_string(), "Snap Down").accelerator("CmdOrCtrl+Alt+Down");
-    let snap_left =
-        CustomMenuItem::new(SNAP_LEFT.to_string(), "Snap Left").accelerator("CmdOrCtrl+Alt+Left");
-    let snap_right = CustomMenuItem::new(SNAP_RIGHT.to_string(), "Snap Right")
-        .accelerator("CmdOrCtrl+Alt+Right");
+    let snap_down = CustomMenuItem::new(SNAP_DOWN, "Snap Down").accelerator("CmdOrCtrl+Alt+Down");
+    let snap_left = CustomMenuItem::new(SNAP_LEFT, "Snap Left").accelerator("CmdOrCtrl+Alt+Left");
+    let snap_right =
+        CustomMenuItem::new(SNAP_RIGHT, "Snap Right").accelerator("CmdOrCtrl+Alt+Right");
+    let next_window =
+        CustomMenuItem::new(NEXT_WINDOW, "Next Window").accelerator("CmdOrCtrl+Slash");
+    let fit_text = CustomMenuItem::new(FIT_TEXT, "Fit Text").accelerator("CmdOrCtrl+F");
     let window_submenu = Submenu::new(
         "Window",
         Menu::new()
             .add_item(snap_up)
             .add_item(snap_down)
             .add_item(snap_left)
-            .add_item(snap_right),
+            .add_item(snap_right)
+            .add_item(next_window)
+            .add_item(fit_text),
     );
 
     let copy = CustomMenuItem::new(COPY, "Copy").accelerator("CmdOrCtrl+C");
@@ -172,6 +177,27 @@ fn main() {
             m if [SNAP_DOWN, SNAP_UP, SNAP_LEFT, SNAP_RIGHT].contains(&m) => {
                 if let Some(focused_window) = event.window().get_focused_window() {
                     snap_window(focused_window, m);
+                }
+            }
+            NEXT_WINDOW => {
+                if let Some(focused_window) = event.window().get_focused_window() {
+                    let mut next = false;
+                    for (label, window) in event.window().app_handle().windows().iter().cycle() {
+                        if next && label != MAIN {
+                            window.set_focus().expect("Could not set focused");
+                            break;
+                        }
+                        if window.label() == focused_window.label() {
+                            next = true;
+                        }
+                    }
+                }
+            }
+            FIT_TEXT => {
+                if let Some(focused_window) = event.window().get_focused_window() {
+                    focused_window
+                        .emit(FIT_TEXT, {})
+                        .expect("Could not emit event!")
                 }
             }
             _ => {}

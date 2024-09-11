@@ -8,9 +8,8 @@
     const { default: Quill, Range } = await import("quill");
     const { Delta } = await import("quill/core");
 
-    const { appWindow, PhysicalPosition, PhysicalSize } = await import(
-      "@tauri-apps/api/window"
-    );
+    const { appWindow, PhysicalPosition, PhysicalSize, LogicalSize } =
+      await import("@tauri-apps/api/window");
     const { writeText, readText } = await import("@tauri-apps/api/clipboard");
 
     const quill = new Quill("#editor", {
@@ -24,6 +23,21 @@
         return new Delta().insert(plaintext);
       } else {
         return new Delta();
+      }
+    });
+
+    quill.on("text-change", async () => {
+      let editor = document.querySelector(".ql-editor");
+
+      const factor = await appWindow.scaleFactor();
+
+      const window = (await appWindow.innerSize()).toLogical(factor);
+
+      if (editor!.clientHeight + 20 + 12 > window.height) {
+        appWindow.setSize(
+          // 25 to get rid of the scroll bar
+          new LogicalSize(window.width, editor!.clientHeight + 25)
+        );
       }
     });
 
@@ -106,6 +120,19 @@
       appWindow.setPosition(new PhysicalPosition(payload.x, payload.y));
 
       appWindow.setSize(new PhysicalSize(payload.width, payload.height));
+    });
+
+    appWindow.listen("fit_text", async () => {
+      let editor = document.querySelector(".ql-editor");
+
+      const factor = await appWindow.scaleFactor();
+
+      const window = (await appWindow.innerSize()).toLogical(factor);
+
+      appWindow.setSize(
+        // 25 to get rid of the scroll bar
+        new LogicalSize(window.width, editor!.clientHeight + 25)
+      );
     });
 
     if (appWindow.label != "main") appWindow.show();
