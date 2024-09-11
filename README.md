@@ -44,12 +44,12 @@ Even though tauri apps are created with cross-platform capabilities, I am creati
 - [x] cmd+arrows to snap to guidelines
 - [x] accelerator to automatically fit window to ~~highest heading level~~ to current size of text
 - [x] window height automatically resizes with text
-- [ ] item tray icon
-  - the one i have now is funny but will get annoying
-- [ ] better default colors
 - [x] accelerator to iterate through notes
+- [x] some sort of indicator to show which sticky is currently in focus
+- [x] item tray icon
+  - the one i have now is funny but will get annoying
+- [x] better default colors
 - [ ] notes can sometimes disappear
   - could be a problem with the autosave or with the init process
   - noticed only after switching back to it
   - could have also accidentally hit the accelerator
-- [ ] some sort of indicator to show which sticky is currently in focus

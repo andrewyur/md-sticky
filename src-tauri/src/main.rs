@@ -13,6 +13,7 @@ use std::time::Duration;
 use tauri::{
     generate_context, AppHandle, CustomMenuItem, Manager, Menu, PhysicalPosition, Submenu, Window,
 };
+use window_shadows;
 
 const QUIT: &str = "quit";
 const CLOSE_NOTE: &str = "close_note";
@@ -24,6 +25,7 @@ const SNAP_DOWN: &str = "snap_down";
 const SNAP_LEFT: &str = "snap_left";
 const SNAP_RIGHT: &str = "snap_right";
 const NEXT_WINDOW: &str = "next_window";
+const PREV_WINDOW: &str = "past_window";
 const FIT_TEXT: &str = "fit_text";
 
 const CUT: &str = "copy";
@@ -33,6 +35,7 @@ const PASTE: &str = "paste";
 
 const MAIN: &str = "main";
 
+#[cfg(any(windows, target_os = "macos"))]
 fn main() {
     // here `"quit".to_string()` defines the menu item id, and the second parameter is the menu item label.
     let quit = CustomMenuItem::new(QUIT, "Quit").accelerator("CmdOrCtrl+Q");
@@ -56,6 +59,8 @@ fn main() {
         CustomMenuItem::new(SNAP_RIGHT, "Snap Right").accelerator("CmdOrCtrl+Alt+Right");
     let next_window =
         CustomMenuItem::new(NEXT_WINDOW, "Next Window").accelerator("CmdOrCtrl+Slash");
+    let prev_window =
+        CustomMenuItem::new(PREV_WINDOW, "Past Window").accelerator("CmdOrCtrl+Alt+Slash");
     let fit_text = CustomMenuItem::new(FIT_TEXT, "Fit Text").accelerator("CmdOrCtrl+F");
     let window_submenu = Submenu::new(
         "Window",
@@ -65,6 +70,7 @@ fn main() {
             .add_item(snap_left)
             .add_item(snap_right)
             .add_item(next_window)
+            .add_item(prev_window)
             .add_item(fit_text),
     );
 
@@ -193,12 +199,36 @@ fn main() {
                     }
                 }
             }
+            PREV_WINDOW => {
+                if let Some(focused_window) = event.window().get_focused_window() {
+                    let mut prev_window: Option<Window> = None;
+                    for (label, window) in event.window().app_handle().windows().iter().cycle() {
+                        if window.label() == focused_window.label() && prev_window.is_some() {
+                            prev_window
+                                .unwrap()
+                                .set_focus()
+                                .expect("Could not set focused");
+                            break;
+                        }
+
+                        if label != MAIN {
+                            prev_window = Some(window.clone());
+                        }
+                    }
+                }
+            }
             FIT_TEXT => {
                 if let Some(focused_window) = event.window().get_focused_window() {
                     focused_window
                         .emit(FIT_TEXT, {})
                         .expect("Could not emit event!")
                 }
+            }
+            _ => {}
+        })
+        .on_window_event(|event| match event.event() {
+            tauri::WindowEvent::Focused(focused) => {
+                window_shadows::set_shadow(event.window(), *focused).unwrap();
             }
             _ => {}
         })
@@ -377,8 +407,8 @@ fn create_new_sticky(handle: AppHandle) -> tauri::Window {
     window
 }
 
-const DEFAULT_COLORS: [&str; 8] = [
-    "#fff9b1", "#10e17a", "#a6ccf5", "#67c6c0", "#ff9d48", "#b384bb", "#ff6f61", "#d32f2f",
+const DEFAULT_COLORS: [&str; 7] = [
+    "#fff9b1", "#81B7DD", "#65A65B", "#AAD2CA", "#98C260", "#E1A1B1", "#B98CB3",
 ];
 
 #[tauri::command]
