@@ -31,19 +31,20 @@ Even though tauri apps are created with cross-platform capabilities, I am creati
 - [x] shrink down text size
 - [x] fix spacing for headings when nothing is above them
 - [x] copy paste
-- [ ] Can move groups of sticky notes easily
+- [x] stickies stick to the edges of other windows
+  - this is an issue with macos not the app
+- [x] drag and then mouse exiting cursor freezes the task bar
+  - fixed as well as possible without changing the menu concept, the cursor change to the resize icons fools the mouseout event, there is not much i can do about this
+- [x] increase autosave consistency
+  - autosave still fails intermittently but it is no longer an issue
+- [x] Can move groups of sticky notes easily
   - drag to select multiple is probably not possible
   - can create an auto organize feature
   - ctrl click to group multiple windows, manipulate position thru os
-- [ ] cmd+arrows to snap to guidelines
+- [x] cmd+arrows to snap to guidelines
 - [ ] accelerator to automatically fit window to highest heading level
 - [ ] window height automatically resizes with text
 - [ ] item tray icon
   - the one i have now is funny but will get annoying
 - [ ] better default colors
-- [x] stickies stick to the edges of other windows
-  - this is an issue with macos not the app
-- [x] drag and then mouse exiting cursor freezes the task bar
-  - fixed as well as possible without changing the menu concept, the cursor change to the resize icons fools the mouseout event, there is not much i can do about this
-- [ ] increase autosave consistency
-  - autosave still freezes sometimes...
+- [ ] accelerator to iterate through notes

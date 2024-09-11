@@ -3,22 +3,41 @@
 
 // use serde::{Deserialize, Serialize};
 use serde::{Deserialize, Serialize};
+use std::cmp;
 use std::collections::HashSet;
 use std::fs;
 use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
-use tauri::{generate_context, AppHandle, CustomMenuItem, Manager, Menu, Submenu};
+use tauri::{
+    generate_context, AppHandle, CustomMenuItem, Manager, Menu, PhysicalPosition, Submenu, Window,
+};
+
+const QUIT: &str = "quit";
+const CLOSE_NOTE: &str = "close_note";
+const NEW_NOTE: &str = "new_note";
+const CLEAR_COLORS: &str = "clear_colors";
+
+const SNAP_UP: &str = "snap_up";
+const SNAP_DOWN: &str = "snap_down";
+const SNAP_LEFT: &str = "snap_left";
+const SNAP_RIGHT: &str = "snap_right";
+
+const CUT: &str = "copy";
+const COPY: &str = "cut";
+const SELECT_ALL: &str = "select_all";
+const PASTE: &str = "paste";
+
+const MAIN: &str = "main";
 
 fn main() {
     // here `"quit".to_string()` defines the menu item id, and the second parameter is the menu item label.
-    let quit = CustomMenuItem::new("quit".to_string(), "Quit").accelerator("CmdOrCtrl+Q");
-    let close_note = CustomMenuItem::new("close_note".to_string(), "Close Current Note")
-        .accelerator("CmdOrCtrl+W");
-    let new_note =
-        CustomMenuItem::new("new_note".to_string(), "New Note").accelerator("CmdOrCtrl+N");
-    let clear_colors = CustomMenuItem::new("clear_colors", "Clear Colors");
+    let quit = CustomMenuItem::new(QUIT, "Quit").accelerator("CmdOrCtrl+Q");
+    let close_note =
+        CustomMenuItem::new(CLOSE_NOTE, "Close Current Note").accelerator("CmdOrCtrl+W");
+    let new_note = CustomMenuItem::new(NEW_NOTE, "New Note").accelerator("CmdOrCtrl+N");
+    let clear_colors = CustomMenuItem::new(CLEAR_COLORS, "Clear Colors");
     let file_submenu = Submenu::new(
         "File",
         Menu::new()
@@ -28,11 +47,26 @@ fn main() {
             .add_item(quit),
     );
 
-    let copy = CustomMenuItem::new("edit_copy", "Copy").accelerator("CmdOrCtrl+C");
-    let paste = CustomMenuItem::new("edit_paste", "Paste").accelerator("CmdOrCtrl+V");
-    let cut = CustomMenuItem::new("edit_cut", "Cut").accelerator("CmdOrCtrl+X");
-    let select_all =
-        CustomMenuItem::new("edit_select_all", "Select All").accelerator("CmdOrCtrl+A");
+    let snap_up = CustomMenuItem::new(SNAP_UP, "Snap Up").accelerator("CmdOrCtrl+Alt+Up");
+    let snap_down =
+        CustomMenuItem::new(SNAP_DOWN.to_string(), "Snap Down").accelerator("CmdOrCtrl+Alt+Down");
+    let snap_left =
+        CustomMenuItem::new(SNAP_LEFT.to_string(), "Snap Left").accelerator("CmdOrCtrl+Alt+Left");
+    let snap_right = CustomMenuItem::new(SNAP_RIGHT.to_string(), "Snap Right")
+        .accelerator("CmdOrCtrl+Alt+Right");
+    let window_submenu = Submenu::new(
+        "Window",
+        Menu::new()
+            .add_item(snap_up)
+            .add_item(snap_down)
+            .add_item(snap_left)
+            .add_item(snap_right),
+    );
+
+    let copy = CustomMenuItem::new(COPY, "Copy").accelerator("CmdOrCtrl+C");
+    let paste = CustomMenuItem::new(PASTE, "Paste").accelerator("CmdOrCtrl+V");
+    let cut = CustomMenuItem::new(CUT, "Cut").accelerator("CmdOrCtrl+X");
+    let select_all = CustomMenuItem::new(SELECT_ALL, "Select All").accelerator("CmdOrCtrl+A");
     let edit_submenu = Submenu::new(
         "Edit",
         Menu::new()
@@ -44,7 +78,8 @@ fn main() {
 
     let menu = Menu::new()
         .add_submenu(file_submenu)
-        .add_submenu(edit_submenu);
+        .add_submenu(edit_submenu)
+        .add_submenu(window_submenu);
 
     tauri::Builder::default()
         .setup(|app| {
@@ -99,22 +134,22 @@ fn main() {
         .manage(Mutex::new(Vec::<String>::new()))
         .menu(menu)
         .on_menu_event(|event| match event.menu_item_id() {
-            "quit" => std::process::exit(0),
-            "new_note" => {
+            QUIT => std::process::exit(0),
+            NEW_NOTE => {
                 std::thread::spawn(move || {
                     create_new_sticky(event.window().app_handle());
                 });
             }
-            "close_note" => {
+            CLOSE_NOTE => {
                 if let Some(focused_window) = event.window().get_focused_window() {
                     let window_label = focused_window.label();
 
-                    if window_label != "main" {
+                    if window_label != MAIN {
                         remove_window(window_label.to_string(), event.window().app_handle())
                     }
                 }
             }
-            "clear_colors" => {
+            CLEAR_COLORS => {
                 let path_buf = event
                     .window()
                     .app_handle()
@@ -127,17 +162,158 @@ fn main() {
 
                 fs::remove_file(file_path).expect("Could not remove colors save file");
             }
-            m if m.starts_with("edit_") => {
+            m if [CUT, COPY, PASTE, SELECT_ALL].contains(&m) => {
                 if let Some(focused_window) = event.window().get_focused_window() {
                     focused_window
-                        .emit(m.strip_prefix("edit_").unwrap(), {})
+                        .emit(m, {})
                         .expect("could not send copy event");
+                }
+            }
+            m if [SNAP_DOWN, SNAP_UP, SNAP_LEFT, SNAP_RIGHT].contains(&m) => {
+                if let Some(focused_window) = event.window().get_focused_window() {
+                    snap_window(focused_window, m);
                 }
             }
             _ => {}
         })
         .run(generate_context!())
         .expect("error while building tauri application")
+}
+
+fn snap_window(window: Window, direction: &str) {
+    let window_position = window.outer_position().unwrap();
+    let window_size = window.outer_size().unwrap();
+    let current_monitor = window
+        .current_monitor()
+        .unwrap()
+        .expect("monitor could not be detected");
+
+    window
+        .set_position(match direction {
+            SNAP_LEFT => PhysicalPosition {
+                x: window
+                    .app_handle()
+                    .windows()
+                    .iter()
+                    .filter(|(label, _)| *label != MAIN && *label != window.label())
+                    .filter_map(|(_label, window)| {
+                        let position = window.outer_position().unwrap();
+                        let size = window.outer_size().unwrap();
+
+                        if window_overlap(
+                            position.y,
+                            size.height as i32,
+                            window_position.y,
+                            window_size.height as i32,
+                        ) {
+                            Some(position.x + size.width as i32)
+                        } else {
+                            None
+                        }
+                    })
+                    .filter(|edge| *edge < window_position.x as i32)
+                    .max()
+                    .unwrap_or(0)
+                    + 20,
+                y: window_position.y,
+            },
+
+            SNAP_UP => PhysicalPosition {
+                x: window_position.x,
+                y: window
+                    .app_handle()
+                    .windows()
+                    .iter()
+                    .filter(|(label, _)| *label != MAIN && *label != window.label())
+                    .filter_map(|(_label, window)| {
+                        let position = window.outer_position().unwrap();
+                        let size = window.outer_size().unwrap();
+
+                        if window_overlap(
+                            position.x,
+                            size.width as i32,
+                            window_position.x,
+                            window_size.width as i32,
+                        ) {
+                            Some(position.y + size.height as i32)
+                        } else {
+                            None
+                        }
+                    })
+                    .filter(|edge| *edge < window_position.y as i32)
+                    .max()
+                    .unwrap_or(0)
+                    + 20,
+            },
+
+            SNAP_RIGHT => PhysicalPosition {
+                x: window
+                    .app_handle()
+                    .windows()
+                    .iter()
+                    .filter(|(label, _)| *label != MAIN && *label != window.label())
+                    .filter_map(|(_label, window)| {
+                        let position = window.outer_position().unwrap();
+                        let size = window.outer_size().unwrap();
+
+                        if window_overlap(
+                            position.y,
+                            size.height as i32,
+                            window_position.y,
+                            window_size.height as i32,
+                        ) {
+                            Some(position.x as i32)
+                        } else {
+                            None
+                        }
+                    })
+                    .filter(|edge| *edge > window_position.x as i32)
+                    .max()
+                    .unwrap_or((current_monitor.size().width - window_size.width) as i32)
+                    - 20,
+                y: window_position.y,
+            },
+
+            SNAP_DOWN => PhysicalPosition {
+                x: window_position.x,
+                y: window
+                    .app_handle()
+                    .windows()
+                    .iter()
+                    .filter(|(label, _)| *label != MAIN && *label != window.label())
+                    .filter_map(|(_label, window)| {
+                        let position = window.outer_position().unwrap();
+                        let size = window.outer_size().unwrap();
+
+                        if window_overlap(
+                            position.x,
+                            size.width as i32,
+                            window_position.x,
+                            window_size.width as i32,
+                        ) {
+                            Some(position.y as i32)
+                        } else {
+                            None
+                        }
+                    })
+                    .filter(|edge| *edge > window_position.y as i32)
+                    .max()
+                    .unwrap_or((current_monitor.size().height - window_size.height) as i32)
+                    - 20,
+            },
+
+            _ => PhysicalPosition { x: 0, y: 0 },
+        })
+        .expect("Could not set window position")
+}
+
+fn window_overlap(start_1: i32, len_1: i32, start_2: i32, len_2: i32) -> bool {
+    let end_1 = start_1 + len_1;
+    let end_2 = start_2 + len_2;
+
+    let overlap_start = cmp::max(start_1, start_2);
+    let overlap_end = cmp::min(end_1, end_2);
+    overlap_end - overlap_start > 20 // 20px is the gap value
 }
 
 fn create_new_sticky(handle: AppHandle) -> tauri::Window {
