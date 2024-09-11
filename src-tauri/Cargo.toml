@@ -1,6 +1,6 @@
 [package]
 name = "md-sticky"
-version = "0.3.0"
+version = "0.3.1"
 description = "A sticky notes app for OSX"
 authors = ["Andrew Yurovchak"]
 license = "BSD-3"
