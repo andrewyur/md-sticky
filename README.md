@@ -24,3 +24,4 @@ download the .dmg and run `xattr -d com.apple.quarantine /path/to/dmg.dmg` to al
 - [ ] cycle through stickies by height
 - [ ] snap issues with overlap (down and right)
 - [ ] finer controls (press a shortcut repeatedly snap to different x or y levels)
+- [ ] keyboard shortcut to shrink width to fit 
