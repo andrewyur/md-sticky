@@ -92,3 +92,12 @@ input:focus {
 .ql-container {
   font-size: 12px;
 }
+
+.ql-editor {
+  width: 100%;
+}
+
+.ql-editor * {
+  width: fit-content;
+  min-width: 10px;
+}

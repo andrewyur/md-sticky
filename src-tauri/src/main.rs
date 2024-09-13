@@ -37,10 +37,9 @@ const MAIN: &str = "main";
 #[cfg(any(windows, target_os = "macos"))]
 fn main() {
     // here `"quit".to_string()` defines the menu item id, and the second parameter is the menu item label.
-    let quit = CustomMenuItem::new(QUIT, "Quit").accelerator("CmdOrCtrl+Q");
-    let close_note =
-        CustomMenuItem::new(CLOSE_NOTE, "Close Current Note").accelerator("CmdOrCtrl+W");
-    let new_note = CustomMenuItem::new(NEW_NOTE, "New Note").accelerator("CmdOrCtrl+N");
+    let quit = CustomMenuItem::new(QUIT, "Quit").accelerator("Cmd+Q");
+    let close_note = CustomMenuItem::new(CLOSE_NOTE, "Close Current Note").accelerator("Cmd+W");
+    let new_note = CustomMenuItem::new(NEW_NOTE, "New Note").accelerator("Cmd+N");
     let clear_colors = CustomMenuItem::new(CLEAR_COLORS, "Clear Colors");
     let file_submenu = Submenu::new(
         "File",
@@ -51,16 +50,21 @@ fn main() {
             .add_item(quit),
     );
 
-    let snap_up = CustomMenuItem::new(SNAP_UP, "Snap Up").accelerator("CmdOrCtrl+Alt+Up");
-    let snap_down = CustomMenuItem::new(SNAP_DOWN, "Snap Down").accelerator("CmdOrCtrl+Alt+Down");
-    let snap_left = CustomMenuItem::new(SNAP_LEFT, "Snap Left").accelerator("CmdOrCtrl+Alt+Left");
-    let snap_right =
-        CustomMenuItem::new(SNAP_RIGHT, "Snap Right").accelerator("CmdOrCtrl+Alt+Right");
-    let next_window =
-        CustomMenuItem::new(NEXT_WINDOW, "Next Window").accelerator("CmdOrCtrl+Slash");
-    let prev_window =
-        CustomMenuItem::new(PREV_WINDOW, "Past Window").accelerator("CmdOrCtrl+Alt+Slash");
-    let fit_text = CustomMenuItem::new(FIT_TEXT, "Fit Text").accelerator("CmdOrCtrl+F");
+    let partial_snap_up =
+        CustomMenuItem::new(format!("partial_{}", SNAP_UP), "Snap Up").accelerator("Cmd+ctrl+Up");
+    let partial_snap_down = CustomMenuItem::new(format!("partial_{}", SNAP_DOWN), "Snap Down")
+        .accelerator("Cmd+ctrl+Down");
+    let partial_snap_left = CustomMenuItem::new(format!("partial_{}", SNAP_LEFT), "Snap Left")
+        .accelerator("Cmd+ctrl+Left");
+    let partial_snap_right = CustomMenuItem::new(format!("partial_{}", SNAP_RIGHT), "Snap Right")
+        .accelerator("Cmd+ctrl+Right");
+    let snap_up = CustomMenuItem::new(SNAP_UP, "Snap Up").accelerator("Cmd+Alt+Up");
+    let snap_down = CustomMenuItem::new(SNAP_DOWN, "Snap Down").accelerator("Cmd+Alt+Down");
+    let snap_left = CustomMenuItem::new(SNAP_LEFT, "Snap Left").accelerator("Cmd+Alt+Left");
+    let snap_right = CustomMenuItem::new(SNAP_RIGHT, "Snap Right").accelerator("Cmd+Alt+Right");
+    let next_window = CustomMenuItem::new(NEXT_WINDOW, "Next Window").accelerator("Cmd+Slash");
+    let prev_window = CustomMenuItem::new(PREV_WINDOW, "Past Window").accelerator("Cmd+Alt+Slash");
+    let fit_text = CustomMenuItem::new(FIT_TEXT, "Fit Text").accelerator("Cmd+F");
     let window_submenu = Submenu::new(
         "Window",
         Menu::new()
@@ -68,15 +72,19 @@ fn main() {
             .add_item(snap_down)
             .add_item(snap_left)
             .add_item(snap_right)
+            .add_item(partial_snap_up)
+            .add_item(partial_snap_down)
+            .add_item(partial_snap_left)
+            .add_item(partial_snap_right)
             .add_item(next_window)
             .add_item(prev_window)
             .add_item(fit_text),
     );
 
-    let copy = CustomMenuItem::new(COPY, "Copy").accelerator("CmdOrCtrl+C");
-    let paste = CustomMenuItem::new(PASTE, "Paste").accelerator("CmdOrCtrl+V");
-    let cut = CustomMenuItem::new(CUT, "Cut").accelerator("CmdOrCtrl+X");
-    let select_all = CustomMenuItem::new(SELECT_ALL, "Select All").accelerator("CmdOrCtrl+A");
+    let copy = CustomMenuItem::new(COPY, "Copy").accelerator("Cmd+C");
+    let paste = CustomMenuItem::new(PASTE, "Paste").accelerator("Cmd+V");
+    let cut = CustomMenuItem::new(CUT, "Cut").accelerator("Cmd+X");
+    let select_all = CustomMenuItem::new(SELECT_ALL, "Select All").accelerator("Cmd+A");
     let edit_submenu = Submenu::new(
         "Edit",
         Menu::new()
@@ -93,7 +101,7 @@ fn main() {
             CustomMenuItem::new(format!("color_{color}"), format!("Color {}", i + 1));
 
         if i < 9 {
-            menu_item = menu_item.accelerator(format!("CmdOrCtrl+{}", i + 1))
+            menu_item = menu_item.accelerator(format!("Cmd+{}", i + 1))
         }
 
         color_submenu_menu = color_submenu_menu.add_item(menu_item);
@@ -194,8 +202,15 @@ fn main() {
                 }
             }
             m if [SNAP_DOWN, SNAP_UP, SNAP_LEFT, SNAP_RIGHT].contains(&m) => {
+                println!("full");
                 if let Some(focused_window) = event.window().get_focused_window() {
                     snap_window(focused_window, m);
+                }
+            }
+            m if m.starts_with("partial_") => {
+                println!("partial_");
+                if let Some(focused_window) = event.window().get_focused_window() {
+                    partial_snap_window(focused_window, m.strip_prefix("partial_").unwrap());
                 }
             }
             NEXT_WINDOW => {
@@ -205,13 +220,16 @@ fn main() {
                         .app_handle()
                         .windows()
                         .into_iter()
+                        .filter(|(label, _)| label != MAIN)
                         .collect::<Vec<(String, Window)>>();
 
-                    collect.sort_by(|a, b| a.0.cmp(&b.0));
+                    collect.sort_by(|a, b| {
+                        (a.1.outer_position().unwrap().y).cmp(&b.1.outer_position().unwrap().y)
+                    });
 
                     let mut next = false;
-                    for (label, window) in collect.iter().cycle() {
-                        if next && label != MAIN {
+                    for (_label, window) in collect.iter().cycle() {
+                        if next {
                             window.set_focus().expect("Could not set focused");
                             break;
                         }
@@ -230,10 +248,14 @@ fn main() {
                         .app_handle()
                         .windows()
                         .into_iter()
+                        .filter(|(label, _)| label != MAIN)
                         .collect::<Vec<(String, Window)>>();
 
-                    collect.sort_by(|a, b| a.0.cmp(&b.0));
-                    for (label, window) in collect.iter().cycle() {
+                    collect.sort_by(|a, b| {
+                        (a.1.outer_position().unwrap().y).cmp(&b.1.outer_position().unwrap().y)
+                    });
+
+                    for (_label, window) in collect.iter().cycle() {
                         if window.label() == focused_window.label() && prev_window.is_some() {
                             prev_window
                                 .unwrap()
@@ -242,9 +264,7 @@ fn main() {
                             break;
                         }
 
-                        if label != MAIN {
-                            prev_window = Some(window.clone());
-                        }
+                        prev_window = Some(window.clone());
                     }
                 }
             }
@@ -276,7 +296,7 @@ fn main() {
         .expect("error while building tauri application")
 }
 
-fn snap_window(window: Window, direction: &str) {
+fn snap_window<'a>(window: Window, direction: &str) {
     let window_position = window.outer_position().unwrap();
     let window_size = window.outer_size().unwrap();
     let current_monitor = window
@@ -284,14 +304,13 @@ fn snap_window(window: Window, direction: &str) {
         .unwrap()
         .expect("monitor could not be detected");
 
+    let positions = get_window_levels(&window);
+
     window
         .set_position(match direction {
             SNAP_LEFT => PhysicalPosition {
-                x: window
-                    .app_handle()
-                    .windows()
+                x: positions
                     .iter()
-                    .filter(|(label, _)| *label != MAIN && *label != window.label())
                     .filter_map(|(_label, window)| {
                         let position = window.outer_position().unwrap();
                         let size = window.outer_size().unwrap();
@@ -316,11 +335,9 @@ fn snap_window(window: Window, direction: &str) {
 
             SNAP_UP => PhysicalPosition {
                 x: window_position.x,
-                y: window
-                    .app_handle()
-                    .windows()
+
+                y: positions
                     .iter()
-                    .filter(|(label, _)| *label != MAIN && *label != window.label())
                     .filter_map(|(_label, window)| {
                         let position = window.outer_position().unwrap();
                         let size = window.outer_size().unwrap();
@@ -343,11 +360,8 @@ fn snap_window(window: Window, direction: &str) {
             },
 
             SNAP_RIGHT => PhysicalPosition {
-                x: window
-                    .app_handle()
-                    .windows()
+                x: positions
                     .iter()
-                    .filter(|(label, _)| *label != MAIN && *label != window.label())
                     .filter_map(|(_label, window)| {
                         let position = window.outer_position().unwrap();
                         let size = window.outer_size().unwrap();
@@ -358,7 +372,7 @@ fn snap_window(window: Window, direction: &str) {
                             window_position.y,
                             window_size.height as i32,
                         ) {
-                            Some(position.x as i32)
+                            Some(position.x - window_size.width as i32)
                         } else {
                             None
                         }
@@ -372,11 +386,8 @@ fn snap_window(window: Window, direction: &str) {
 
             SNAP_DOWN => PhysicalPosition {
                 x: window_position.x,
-                y: window
-                    .app_handle()
-                    .windows()
+                y: positions
                     .iter()
-                    .filter(|(label, _)| *label != MAIN && *label != window.label())
                     .filter_map(|(_label, window)| {
                         let position = window.outer_position().unwrap();
                         let size = window.outer_size().unwrap();
@@ -387,7 +398,7 @@ fn snap_window(window: Window, direction: &str) {
                             window_position.x,
                             window_size.width as i32,
                         ) {
-                            Some(position.y as i32)
+                            Some(position.y - window_size.height as i32)
                         } else {
                             None
                         }
@@ -401,6 +412,115 @@ fn snap_window(window: Window, direction: &str) {
             _ => PhysicalPosition { x: 0, y: 0 },
         })
         .expect("Could not set window position")
+}
+
+fn partial_snap_window(window: Window, direction: &str) {
+    let window_position = window.outer_position().unwrap();
+    let window_size = window.outer_size().unwrap();
+    let current_monitor = window
+        .current_monitor()
+        .unwrap()
+        .expect("monitor could not be detected");
+
+    let positions = get_window_levels(&window);
+
+    window
+        .set_position(match direction {
+            SNAP_LEFT => PhysicalPosition {
+                x: positions
+                    .iter()
+                    .map(|(_label, window)| {
+                        let position = window.outer_position().unwrap();
+                        let size = window.outer_size().unwrap();
+
+                        vec![position.x, position.x + size.width as i32]
+                    })
+                    .flatten()
+                    .filter(|position| *position < window_position.x)
+                    .inspect(|x| println!("{}", x))
+                    .max()
+                    .unwrap_or(20),
+                y: window_position.y,
+            },
+
+            SNAP_UP => PhysicalPosition {
+                x: window_position.x,
+                y: positions
+                    .iter()
+                    .map(|(_label, window)| {
+                        let position = window.outer_position().unwrap();
+                        let size = window.outer_size().unwrap();
+
+                        vec![position.y, position.y + size.height as i32]
+                    })
+                    .flatten()
+                    .filter(|position| *position < window_position.y)
+                    .inspect(|x| println!("{}", x))
+                    .max()
+                    .unwrap_or(20),
+            },
+
+            SNAP_RIGHT => PhysicalPosition {
+                x: positions
+                    .iter()
+                    .map(|(_label, window)| {
+                        let position = window.outer_position().unwrap();
+                        let size = window.outer_size().unwrap();
+
+                        vec![
+                            (position.x + size.width as i32) - window_size.width as i32,
+                            position.x - window_size.width as i32,
+                        ]
+                    })
+                    .flatten()
+                    .filter(|position| {
+                        let size = window.outer_size().unwrap();
+
+                        *position + size.width as i32 > window_position.x + window_size.width as i32
+                    })
+                    .inspect(|x| println!("{}", x))
+                    .min()
+                    .unwrap_or((current_monitor.size().width - window_size.width) as i32 - 20),
+                y: window_position.y,
+            },
+
+            SNAP_DOWN => PhysicalPosition {
+                x: window_position.x,
+                y: positions
+                    .iter()
+                    .map(|(_label, window)| {
+                        let position = window.outer_position().unwrap();
+                        let size = window.outer_size().unwrap();
+
+                        vec![
+                            (position.y + size.height as i32) - window_size.height as i32,
+                            position.y - window_size.height as i32,
+                        ]
+                    })
+                    .flatten()
+                    .filter(|position| {
+                        let size = window.outer_size().unwrap();
+
+                        *position + size.height as i32
+                            > window_position.y + window_size.height as i32
+                    })
+                    .inspect(|x| println!("{}", x))
+                    .min()
+                    .unwrap_or((current_monitor.size().height - window_size.height) as i32 - 20),
+            },
+
+            _ => PhysicalPosition { x: 0, y: 0 },
+        })
+        .expect("Could not set window position")
+}
+
+fn get_window_levels(window: &Window) -> Vec<(String, Window)> {
+    window
+        .app_handle()
+        .windows()
+        .into_iter()
+        .filter(|(label, _)| *label != MAIN && *label != window.label())
+        .collect()
 }
 
 fn window_overlap(start_1: i32, len_1: i32, start_2: i32, len_2: i32) -> bool {

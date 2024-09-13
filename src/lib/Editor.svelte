@@ -129,9 +129,15 @@
 
       const window = (await appWindow.innerSize()).toLogical(factor);
 
+      let maxWidth = 0;
+
+      for (let item of editor!.children) {
+        maxWidth = Math.max(maxWidth, item.clientWidth);
+      }
+
       appWindow.setSize(
         // 25 to get rid of the scroll bar
-        new LogicalSize(window.width, editor!.clientHeight + 25)
+        new LogicalSize(maxWidth + 30, editor!.clientHeight + 25)
       );
     });
 
