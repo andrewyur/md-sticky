@@ -137,7 +137,7 @@
 
       appWindow.setSize(
         // 25 to get rid of the scroll bar
-        new LogicalSize(maxWidth + 30, editor!.clientHeight + 25)
+        new LogicalSize(maxWidth + 35, editor!.clientHeight + 25)
       );
     });
 
