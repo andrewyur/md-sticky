@@ -135,6 +135,10 @@
       );
     });
 
+    appWindow.listen("set_color", (event) => {
+      document.body.style.backgroundColor = event.payload as string;
+    });
+
     if (appWindow.label != "main") appWindow.show();
 
     // not sure why, but this glitches out the cursor in the editor

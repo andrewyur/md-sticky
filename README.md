@@ -21,3 +21,4 @@ download the .dmg and run `xattr -d com.apple.quarantine /path/to/dmg.dmg` to al
 ## TODO
 
 - [ ] keyboard shortuts to set colors
+- [ ] proper error handling with `-> Result<Vec<String>, Box<dyn Error>>`

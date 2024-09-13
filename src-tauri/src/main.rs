@@ -1,13 +1,12 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-// use serde::{Deserialize, Serialize};
+use dirs::data_dir;
 use serde::{Deserialize, Serialize};
 use std::cmp;
 use std::collections::HashSet;
 use std::fs;
-use std::sync::mpsc;
-use std::sync::{Arc, Mutex};
+use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 use tauri::{
@@ -87,13 +86,29 @@ fn main() {
             .add_item(select_all),
     );
 
+    let mut color_submenu_menu = Menu::new();
+
+    for (i, color) in get_colors().iter().enumerate() {
+        let mut menu_item =
+            CustomMenuItem::new(format!("color_{color}"), format!("Color {}", i + 1));
+
+        if i < 9 {
+            menu_item = menu_item.accelerator(format!("CmdOrCtrl+{}", i + 1))
+        }
+
+        color_submenu_menu = color_submenu_menu.add_item(menu_item);
+    }
+
+    let color_submenu = Submenu::new("Color", color_submenu_menu);
+
     let menu = Menu::new()
         .add_submenu(file_submenu)
         .add_submenu(edit_submenu)
-        .add_submenu(window_submenu);
+        .add_submenu(window_submenu)
+        .add_submenu(color_submenu);
 
     tauri::Builder::default()
-        .setup(|app| {
+        .setup(move |app| {
             let path_buf = app
                 .handle()
                 .path_resolver()
@@ -240,6 +255,15 @@ fn main() {
                         .expect("Could not emit event!")
                 }
             }
+
+            m if m.starts_with("color_") => {
+                if let Some(focused_window) = event.window().get_focused_window() {
+                    focused_window
+                        .emit("set_color", m.strip_prefix("color_"))
+                        .expect("Could not emit event!")
+                }
+            }
+
             _ => {}
         })
         .on_window_event(|event| match event.event() {
@@ -437,7 +461,7 @@ fn add_color(color: &str, app_handle: tauri::AppHandle) -> Result<(), String> {
 
     let file_path = path_buf.as_path();
 
-    let mut colors = get_colors(app_handle).map_err(|e| e.to_string())?;
+    let mut colors = get_colors();
 
     if !colors.iter().any(|c| *c == color) {
         colors.push(color.to_string());
@@ -449,27 +473,6 @@ fn add_color(color: &str, app_handle: tauri::AppHandle) -> Result<(), String> {
     }
 
     Ok(())
-}
-
-#[tauri::command]
-fn get_colors(app_handle: tauri::AppHandle) -> Result<Vec<String>, String> {
-    let path_buf = app_handle
-        .path_resolver()
-        .app_data_dir()
-        .expect("could not resolve app data directory")
-        .join("colors.json");
-
-    let file_path = path_buf.as_path();
-
-    if file_path.exists() {
-        serde_json::from_str(&fs::read_to_string(file_path).map_err(|e| e.to_string())?)
-            .map_err(|e| e.to_string())
-    } else {
-        Ok(DEFAULT_COLORS
-            .iter()
-            .map(|s| s.to_string())
-            .collect::<Vec<String>>())
-    }
 }
 
 #[derive(Clone, Deserialize, Serialize)]
@@ -611,4 +614,21 @@ fn remove_window(label: String, app_handle: tauri::AppHandle) {
         .expect("could not get window from label")
         .close()
         .expect("could not close window");
+}
+
+#[tauri::command]
+fn get_colors() -> Vec<String> {
+    let path_buf = data_dir()
+        .expect("Could not resolve app data directory")
+        .join("md-sticky/colors.json");
+
+    let file_path = path_buf.as_path();
+
+    if file_path.exists() {
+        let file_content = fs::read_to_string(file_path).expect("could not read colors path");
+        let colors: Vec<String> = serde_json::from_str(&file_content).expect("could parse colors");
+        colors
+    } else {
+        DEFAULT_COLORS.iter().map(|s| s.to_string()).collect()
+    }
 }
