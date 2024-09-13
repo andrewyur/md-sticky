@@ -20,5 +20,8 @@ download the .dmg and run `xattr -d com.apple.quarantine /path/to/dmg.dmg` to al
 
 ## TODO
 
-- [ ] keyboard shortuts to set colors
 - [ ] proper error handling with `-> Result<Vec<String>, Box<dyn Error>>`
+- [ ] cycle through stickies by height
+- [ ] snap issues with overlap (down and right)
+- [ ] finer controls (press a shortcut repeatedly snap to different x or y levels)
+- [ ] keyboard shortcut to shrink width to fit
