@@ -50,14 +50,17 @@ fn main() {
             .add_item(quit),
     );
 
-    let partial_snap_up =
-        CustomMenuItem::new(format!("partial_{}", SNAP_UP), "Snap Up").accelerator("Cmd+ctrl+Up");
-    let partial_snap_down = CustomMenuItem::new(format!("partial_{}", SNAP_DOWN), "Snap Down")
-        .accelerator("Cmd+ctrl+Down");
-    let partial_snap_left = CustomMenuItem::new(format!("partial_{}", SNAP_LEFT), "Snap Left")
-        .accelerator("Cmd+ctrl+Left");
-    let partial_snap_right = CustomMenuItem::new(format!("partial_{}", SNAP_RIGHT), "Snap Right")
-        .accelerator("Cmd+ctrl+Right");
+    let partial_snap_up = CustomMenuItem::new(format!("partial_{}", SNAP_UP), "Partial Snap Up")
+        .accelerator("Cmd+Alt+Shift+Up");
+    let partial_snap_down =
+        CustomMenuItem::new(format!("partial_{}", SNAP_DOWN), "Partial Snap Down")
+            .accelerator("Cmd+Alt+Shift+Down");
+    let partial_snap_left =
+        CustomMenuItem::new(format!("partial_{}", SNAP_LEFT), "Partial Snap Left")
+            .accelerator("Cmd+Alt+Shift+Left");
+    let partial_snap_right =
+        CustomMenuItem::new(format!("partial_{}", SNAP_RIGHT), "Partial Snap Right")
+            .accelerator("Cmd+Alt+Shift+Right");
     let snap_up = CustomMenuItem::new(SNAP_UP, "Snap Up").accelerator("Cmd+Alt+Up");
     let snap_down = CustomMenuItem::new(SNAP_DOWN, "Snap Down").accelerator("Cmd+Alt+Down");
     let snap_left = CustomMenuItem::new(SNAP_LEFT, "Snap Left").accelerator("Cmd+Alt+Left");
@@ -202,13 +205,11 @@ fn main() {
                 }
             }
             m if [SNAP_DOWN, SNAP_UP, SNAP_LEFT, SNAP_RIGHT].contains(&m) => {
-                println!("full");
                 if let Some(focused_window) = event.window().get_focused_window() {
                     snap_window(focused_window, m);
                 }
             }
             m if m.starts_with("partial_") => {
-                println!("partial_");
                 if let Some(focused_window) = event.window().get_focused_window() {
                     partial_snap_window(focused_window, m.strip_prefix("partial_").unwrap());
                 }
@@ -378,7 +379,7 @@ fn snap_window<'a>(window: Window, direction: &str) {
                         }
                     })
                     .filter(|edge| *edge > window_position.x as i32)
-                    .max()
+                    .min()
                     .unwrap_or((current_monitor.size().width - window_size.width) as i32)
                     - 20,
                 y: window_position.y,
@@ -404,7 +405,7 @@ fn snap_window<'a>(window: Window, direction: &str) {
                         }
                     })
                     .filter(|edge| *edge > window_position.y as i32)
-                    .max()
+                    .min()
                     .unwrap_or((current_monitor.size().height - window_size.height) as i32)
                     - 20,
             },
@@ -437,7 +438,6 @@ fn partial_snap_window(window: Window, direction: &str) {
                     })
                     .flatten()
                     .filter(|position| *position < window_position.x)
-                    .inspect(|x| println!("{}", x))
                     .max()
                     .unwrap_or(20),
                 y: window_position.y,
@@ -455,7 +455,6 @@ fn partial_snap_window(window: Window, direction: &str) {
                     })
                     .flatten()
                     .filter(|position| *position < window_position.y)
-                    .inspect(|x| println!("{}", x))
                     .max()
                     .unwrap_or(20),
             },
@@ -478,7 +477,6 @@ fn partial_snap_window(window: Window, direction: &str) {
 
                         *position + size.width as i32 > window_position.x + window_size.width as i32
                     })
-                    .inspect(|x| println!("{}", x))
                     .min()
                     .unwrap_or((current_monitor.size().width - window_size.width) as i32 - 20),
                 y: window_position.y,
@@ -504,7 +502,6 @@ fn partial_snap_window(window: Window, direction: &str) {
                         *position + size.height as i32
                             > window_position.y + window_size.height as i32
                     })
-                    .inspect(|x| println!("{}", x))
                     .min()
                     .unwrap_or((current_monitor.size().height - window_size.height) as i32 - 20),
             },
